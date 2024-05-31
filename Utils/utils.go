@@ -1,9 +1,6 @@
 package utils
 
 import (
-	"encoding/json"
-	"fmt"
-	models "hello/Models"
 	"io"
 	"log"
 	"net/http"
@@ -11,19 +8,6 @@ import (
 	"os"
 	"strconv"
 )
-
-func ParseTelegramRequest(r *http.Request) (*models.Update, error) {
-	var update models.Update
-	fmt.Println(r.Body)
-	fmt.Println("))))))))))))))*************")
-	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
-		log.Printf("could not decode incoming update %s", err.Error())
-		return nil, err
-	}
-	fmt.Println("=================")
-	fmt.Println(update.Message.Chat.Id)
-	return &update, nil
-}
 
 func SendTextToTelegramChat(chatId int, text string) (string, error) {
 
@@ -35,7 +19,6 @@ func SendTextToTelegramChat(chatId int, text string) (string, error) {
 			"chat_id": {strconv.Itoa(chatId)},
 			"text":    {text},
 		})
-
 	if err != nil {
 		log.Printf("error when posting text to the chat: %s", err.Error())
 		return "", err

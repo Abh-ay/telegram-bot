@@ -1,23 +1,34 @@
 package handler
 
 import (
-	utils "hello/Utils"
-	"log"
+	"encoding/json"
+	"fmt"
+	models "hello/Models"
+	"io"
+	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 )
 
 func HandleTelegramWebHook(g *gin.Context) {
+	update := models.Update{}
 
-	// Parse incoming request
-	var update, err = utils.ParseTelegramRequest(g.Request)
+	var url = "https://api.telegram.org/bot" + os.Getenv("TELEGRAM_APITOKEN") + "/getUpdates"
+	var res, _ = http.Get(url)
+	fmt.Println(url)
+	fmt.Println("!11!")
+	defer res.Body.Close()
+	fmt.Println(res.Body)
+	var resp = json.NewDecoder(res.Body).Decode(&update)
+	fmt.Println("!22!")
+	fmt.Println(resp)
+	body, _ := io.ReadAll(res.Body)
+	err := json.Unmarshal(body, &update)
 	if err != nil {
-		log.Printf("error parsing update, %s", err.Error())
+		g.ShouldBindJSON(http.StatusInternalServerError)
 		return
 	}
+	g.JSON(http.StatusOK, update)
 
-	var telegramResponseBody, errTelegram = utils.SendTextToTelegramChat(update.Message.Chat.Id, "Tempo Message")
-	if errTelegram != nil {
-		log.Printf("got error %s from telegram, reponse body is %s", errTelegram.Error(), telegramResponseBody)
-	}
 }
