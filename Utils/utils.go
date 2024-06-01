@@ -1,37 +1,37 @@
 package utils
 
 import (
-	"io"
-	"log"
-	"net/http"
-	"net/url"
-	"os"
-	"strconv"
+	"fmt"
+	"reflect"
+	"sync"
 )
 
-func SendTextToTelegramChat(chatId int, text string) (string, error) {
+type Cache struct {
+	cacheMap sync.Map
+}
 
-	log.Printf("Sending %s to chat_id: %d", text, chatId)
-	var telegramApi string = "https://api.telegram.org/bot" + os.Getenv("TELEGRAM_BOT_TOKEN") + "/sendMessage"
-	response, err := http.PostForm(
-		telegramApi,
-		url.Values{
-			"chat_id": {strconv.Itoa(chatId)},
-			"text":    {text},
-		})
-	if err != nil {
-		log.Printf("error when posting text to the chat: %s", err.Error())
-		return "", err
+func (c *Cache) Set(key string, value any) {
+	fmt.Println("SET--method")
+	fmt.Println(key)
+	fmt.Println(value)
+	c.cacheMap.Store(key, value)
+}
+func (c *Cache) Get(key string) (any, bool) {
+	val, ok := c.cacheMap.Load(key)
+	fmt.Println("Get Method ----")
+	fmt.Println(key)
+	fmt.Println(val)
+	if ok {
+		return val, ok
+	} else {
+		return "", false
 	}
-	defer response.Body.Close()
+}
 
-	var bodyBytes, errRead = io.ReadAll(response.Body)
-	if errRead != nil {
-		log.Printf("error in parsing telegram answer %s", errRead.Error())
-		return "", err
+func IsNil(v interface{}) bool {
+	// reflect.ValueOf will panic on a nil value.
+	if v == nil {
+		return true
 	}
-	bodyString := string(bodyBytes)
-	log.Printf("Body of Telegram Response: %s", bodyString)
-
-	return bodyString, nil
+	return reflect.ValueOf(v).IsZero()
 }

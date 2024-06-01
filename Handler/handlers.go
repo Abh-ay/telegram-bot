@@ -3,7 +3,10 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	core "hello/Core"
+	enums "hello/Enums"
 	models "hello/Models"
+	utils "hello/Utils"
 	"io"
 	"net/http"
 	"os"
@@ -11,24 +14,41 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func HandleTelegramWebHook(g *gin.Context) {
-	update := models.Update{}
+var CacheStruct = utils.Cache{}
 
-	var url = "https://api.telegram.org/bot" + os.Getenv("TELEGRAM_APITOKEN") + "/getUpdates"
+func GetUpdates(g *gin.Context) {
+
+	update := models.Update{}
+	offsetValue, isOffsetPresent := CacheStruct.Get(enums.LatestUpdateId)
+	if isOffsetPresent {
+		var url = enums.Tele_Url + os.Getenv("TELEGRAM_APITOKEN") + "/getUpdates?offset=" + fmt.Sprint(offsetValue)
+		fmt.Println(url)
+		FetchResponse(url, g, &update)
+	} else {
+		var url = enums.Tele_Url + os.Getenv("TELEGRAM_APITOKEN") + "/getUpdates"
+		FetchResponse(url, g, &update)
+	}
+	if utils.IsNil(update.Result) {
+		g.JSON(http.StatusOK, "No Updates hase been found till yet")
+		return
+	}
+	count := (len(update.Result) - 1)
+	if count < 1 {
+		count = 0
+		CacheStruct.Set(enums.LatestUpdateId, update.Result[count].UpdateID)
+	} else {
+		CacheStruct.Set(enums.LatestUpdateId, update.Result[count].UpdateID)
+	}
+	core.SendMessages(update.Result[0])
+}
+
+func FetchResponse(url string, g *gin.Context, update *models.Update) {
 	var res, _ = http.Get(url)
-	fmt.Println(url)
-	fmt.Println("!11!")
 	defer res.Body.Close()
-	fmt.Println(res.Body)
-	var resp = json.NewDecoder(res.Body).Decode(&update)
-	fmt.Println("!22!")
-	fmt.Println(resp)
 	body, _ := io.ReadAll(res.Body)
 	err := json.Unmarshal(body, &update)
 	if err != nil {
 		g.ShouldBindJSON(http.StatusInternalServerError)
 		return
 	}
-	g.JSON(http.StatusOK, update)
-
 }
