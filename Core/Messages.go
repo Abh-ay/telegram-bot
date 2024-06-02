@@ -2,6 +2,7 @@ package core
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	enums "hello/Enums"
@@ -11,13 +12,38 @@ import (
 	"strings"
 )
 
-func SendMessages(result models.Result) (resp *http.Response, err error) {
+type Core struct {
+	Quries *models.Queries
+}
+
+func (c *Core) SetQueries(query *models.Queries) {
+	fmt.Println("Set Quries method")
+	fmt.Println(query)
+	c.Quries = query
+}
+
+func (r *Core) SendMessages(result models.Result) (resp *http.Response, err error) {
+	var refQuery models.DtoRefQuery
 	msgText := ""
-	if strings.ToLower(result.Message.Text) == "hi" {
-		msgText = "Welcome to Teetbot... \n How can I help you 🙌🏻?"
-	} else {
-		msgText = "You sent other than hi......."
+	err = r.Quries.GetQuery.Get(&refQuery, strings.ToLower(result.Message.Text))
+	fmt.Println(refQuery.ID)
+	fmt.Println(refQuery.ExpectedMessage)
+	msgText = refQuery.ExpectedMessage
+	fmt.Println(msgText)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			msgText = "Hmm, It's look like you sent wrong input"
+		} else {
+			panic("Got error while get query from DB")
+		}
 	}
+	if refQuery.ID != 0 {
+		fmt.Println(refQuery.ID)
+		fmt.Println(refQuery.ExpectedMessage)
+		msgText = refQuery.ExpectedMessage
+		fmt.Println(msgText)
+	}
+
 	postBody, _ := json.Marshal(map[string]string{
 		"chat_id": fmt.Sprint(result.Message.Chat.ID),
 		"text":    msgText,

@@ -33,3 +33,8 @@ type From struct {
 	LastName     string `json:"last_name"`
 	LanguageCode string `json:"language_code"`
 }
+type DtoRefQuery struct {
+	ID              int64  `json:"id"`
+	Quries          string `json:"quries"`
+	ExpectedMessage string `json:"expected_message"`
+}

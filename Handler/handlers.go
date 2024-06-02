@@ -15,9 +15,9 @@ import (
 )
 
 var CacheStruct = utils.Cache{}
+var C core.Core
 
 func GetUpdates(g *gin.Context) {
-
 	update := models.Update{}
 	offsetValue, isOffsetPresent := CacheStruct.Get(enums.LatestUpdateId)
 	if isOffsetPresent {
@@ -39,7 +39,7 @@ func GetUpdates(g *gin.Context) {
 	} else {
 		CacheStruct.Set(enums.LatestUpdateId, update.Result[count].UpdateID)
 	}
-	core.SendMessages(update.Result[0])
+	C.SendMessages(update.Result[0])
 }
 
 func FetchResponse(url string, g *gin.Context, update *models.Update) {
@@ -49,6 +49,27 @@ func FetchResponse(url string, g *gin.Context, update *models.Update) {
 	err := json.Unmarshal(body, &update)
 	if err != nil {
 		g.ShouldBindJSON(http.StatusInternalServerError)
+		return
+	}
+}
+
+func WebHookHandler(g *gin.Context) {
+	var result models.Result
+	body, err := io.ReadAll(g.Request.Body)
+	if err != nil {
+		g.ShouldBindJSON(http.StatusMisdirectedRequest)
+		return
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		g.ShouldBindJSON("Error in unmarshal Json")
+		return
+	}
+	if utils.IsNil(result) {
+		g.JSON(http.StatusOK, "No Updates hase been found till yet")
+		return
+	}
+	if _, err := C.SendMessages(result); err != nil {
+		g.ShouldBindJSON("Error while sending messsage")
 		return
 	}
 }

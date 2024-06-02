@@ -1,16 +1,19 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	core "hello/Core"
-	models "hello/Models"
-	"io"
+	dbConnection "hello/DBConnection"
+	handler "hello/Handler"
+	utils "hello/Utils"
 	"log"
 	"net/http"
 
+	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
+
+const filePath = "quries.sql"
+const schemaFilePath = "schema.sql"
 
 func init() {
 	err := godotenv.Load(".env")
@@ -19,35 +22,41 @@ func init() {
 	}
 
 }
+
+// func ListenSever() *http.Server {
+// 	fmt.Println("Hello world")
+// r := gin.Default()
+// webHookRoutes := r.Group("")
+// {
+// 	webHookRoutes.POST("/", handler.WebHookHandler)
+// }
+// srv := &http.Server{
+// 	Addr:    ":8989",
+// 	Handler: r,
+// }
+// if err := srv.ListenAndServe(); err != nil {
+// 	log.Printf("listen: %s\n", err)
+// }
+// return srv
+// }
+
 func main() {
-	fmt.Println("Hello world")
-	helloHandler := func(w http.ResponseWriter, req *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		body, err := io.ReadAll(req.Body)
-		if err != nil {
-			log.Printf("failed to read body: %v", err)
-		}
-		var result models.Result
-		if err := json.Unmarshal(body, &result); err != nil {
-			log.Printf("failed to unmarshal body: %v", err)
-			return
-		}
-		_, err = core.SendMessages(result)
-		if err != nil {
-			return
-		}
-
+	db := dbConnection.ConnectDB()
+	//utils.InstallSchema(schemaFilePath, db)
+	qMap := utils.ReadQueries(filePath)
+	qr := utils.PrepareQueries(qMap, db)
+	fmt.Println()
+	handler.C.SetQueries(qr)
+	r := gin.Default()
+	webHookRoutes := r.Group("")
+	{
+		webHookRoutes.POST("/", handler.WebHookHandler)
 	}
-	http.HandleFunc("/", helloHandler)
-	if err := http.ListenAndServe(":8989", nil); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+	srv := &http.Server{
+		Addr:    ":8989",
+		Handler: r,
 	}
-	// r := gin.Default()
-	// publicRoutes := r.Group("/public")
-	// //publicRoutes.Use(Middleware.CORSMiddleware())
-	// {
-	// 	publicRoutes.GET("/check", handler.GetUpdates)
-	// }
-	//r.Run(":8989")
-
+	if err := srv.ListenAndServe(); err != nil {
+		log.Printf("listen: %s\n", err)
+	}
 }
